@@ -10,7 +10,7 @@
         description = "Standalone Flutter Android Dev Shell (Nix-LD, No FHS)";
       };
 
-      # Opsional: Tetap daftarkan di 'templates' agar lebih formal
+      # Alias standar untuk Nix
       templates.default = self.defaultTemplate;
     };
 }
