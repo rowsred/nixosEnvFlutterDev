@@ -1,0 +1,64 @@
+{
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+
+  outputs =
+    { self, nixpkgs }:
+    let
+      system = "x86_64-linux"; # Sesuaikan jika pakai ARM (aarch64-linux)
+      pkgs = import nixpkgs {
+        inherit system;
+        config.android_sdk.accept_license = true;
+        config.allowUnfree = true;
+      };
+
+      # Ambil SDK esensial saja
+      # Ambil SDK esensial + NDK
+      androidSdk =
+        (pkgs.androidenv.composeAndroidPackages {
+          buildToolsVersions = [
+            "35.0.0"
+          ];
+          platformVersions = [ "36" ];
+          # TAMBAHKAN INI: Sertakan NDK agar Gradle tidak mencoba download sendiri
+          includeNDK = true;
+          ndkVersions = [ "28.2.13676358" ]; # Sesuaikan dengan versi di error
+          cmakeVersions = [ "3.22.1" ];
+        }).androidsdk;
+
+    in
+    {
+      devShells.${system}.default =
+        (pkgs.buildFHSEnv {
+          name = "flutter-env";
+          targetPkgs =
+            pkgs: with pkgs; [
+              # Tooling Utama
+              flutter
+              jdk17
+              androidSdk
+              cmake
+
+              # Library "Penerjemah" agar AAPT2 (binary luar) bisa jalan
+              glibc
+              zlib
+              stdenv.cc.cc.lib
+
+              # Dependencies tambahan untuk build Android
+              ncurses
+              pkg-config
+              util-linux
+              git
+            ];
+
+          # Set environment variables di dalam FHS
+          profile = ''
+            export ANDROID_HOME=${androidSdk}/libexec/android-sdk
+            export ANDROID_SDK_ROOT=${androidSdk}/libexec/android-sdk
+            export JAVA_HOME=${pkgs.jdk17.home}
+            # Tambahkan binary flutter ke PATH jika belum ada
+            export PATH=$PATH:${pkgs.flutter}/bin
+            echo "Flutter FHS Environment Loaded"
+          '';
+        }).env;
+    };
+}
